@@ -1,76 +1,130 @@
 provider "aws" {
-  region = var.aws_region
+    region = var.aws_region
 }
 
-### IAM Role for EKS Cluster
+## IAM role for EKS Cluster
 
 resource "aws_iam_role" "eks_cluster_role" {
-  name = "eks-cluster-role1"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Principal = { Service = "eks.amazonaws.com" }
-      Action = "sts:AssumeRole"
-    }]
-  })
+    name = "eks-cluster-role"
+    assume_role_policy = jsonencode({
+       
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "Service": [
+                    "eks.amazonaws.com"
+                ]
+            },
+            "Action": "sts:AssumeRole"
+        }
+    ]
+} )
+    
 }
+
+## Attaching policy to tyhe role
 
 resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
+ policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+
   role       = aws_iam_role.eks_cluster_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+
 }
 
 
-### EKS Cluster
+data "aws_vpc" "default_vpc" {
+    default = true
+}
 
-resource "aws_eks_cluster" "eks" {
-  name     = var.cluster_name
-  role_arn = aws_iam_role.eks_cluster_role.arn
+data "aws_subnets" "default_subnet" {
+    filter {
+      name = "vpc-id"
+      values = [data.aws_vpc.default_vpc.id]
+    }
+}
 
-  vpc_config {
-    subnet_ids = data.aws_subnets.default.ids
+## EKS cluster
+
+
+resource "aws_eks_cluster" "eks_cluster" {
+  name = var.cluster_name
+  access_config {
+    authentication_mode = "API"
   }
 
-  depends_on = [aws_iam_role_policy_attachment.eks_cluster_policy]
+  role_arn = aws_iam_role.eks_cluster_role.arn
+  version = "1.34"
+
+  vpc_config {
+    subnet_ids = data.aws_subnets.default_subnet.ids
+  }
+
+
+depends_on = [
+        aws_iam_role_policy_attachment.eks_cluster_policy
+]
+
 }
 
-### IAM Role for Worker Nodes
 
+## IAM role for Node Group
 
-resource "aws_iam_role" "node_role" {
-  name = "eks-node-role1"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Principal = { Service = "ec2.amazonaws.com" }
-      Action = "sts:AssumeRole"
-    }]
-  })
+resource "aws_iam_role" "eks_node_group_role" {
+    name = "eks-node_group"
+    assume_role_policy = jsonencode(
+       
+    {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "sts:AssumeRole"
+            ],
+            "Principal": {
+                "Service": [
+                    "ec2.amazonaws.com"
+                 ]
+             }
+         }
+                 ]
+    } )
 }
 
-resource "aws_iam_role_policy_attachment" "node_policy" {
-  role       = aws_iam_role.node_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+## Attaching the policy to the group 
+
+resource "aws_iam_role_policy_attachment" "eks_container_registry_policy" {
+ policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+
+  role       = aws_iam_role.eks_node_group_role.name
+
 }
 
-resource "aws_iam_role_policy_attachment" "cni_policy" {
-  role       = aws_iam_role.node_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+resource "aws_iam_role_policy_attachment" "eks_CNI_policy" {
+ policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+
+  role       = aws_iam_role.eks_node_group_role.name
+
 }
 
-### Node Group
+resource "aws_iam_role_policy_attachment" "eks_worker_node_role" {
+ policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+
+  role       = aws_iam_role.eks_node_group_role.name
+
+}
 
 
-resource "aws_eks_node_group" "nodes" {
-  cluster_name    = aws_eks_cluster.eks.name
-  node_group_name = "demo-node-group"
-  node_role_arn   = aws_iam_role.node_role.arn
-  subnet_ids      = data.aws_subnets.default.ids
-  instance_types  = [var.node_instance_type]
+## Node Group
+
+resource "aws_eks_node_group" "eks_node_group" {
+    cluster_name    = aws_eks_cluster.eks_cluster.name
+  node_group_name = "eks-node-group"
+  node_role_arn   = aws_iam_role.eks_node_group_role.arn
+  subnet_ids      = data.aws_subnets.default_subnet.ids
+  instance_types = var.node_instance_type
 
   scaling_config {
     desired_size = var.desired_nodes
@@ -78,21 +132,18 @@ resource "aws_eks_node_group" "nodes" {
     min_size     = 1
   }
 
-  depends_on = [
-    aws_iam_role_policy_attachment.node_policy,
-    aws_iam_role_policy_attachment.cni_policy
-  ]
-}
+  update_config {
+    max_unavailable = 1
 
-### Get Default VPC Subnets
-
-data "aws_vpc" "default" {
-  default = true
-}
-
-data "aws_subnets" "default" {
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.default.id]
   }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_CNI_policy,
+    aws_iam_role_policy_attachment.eks_container_registry_policy,
+    aws_iam_role_policy_attachment.eks_worker_node_role,
+  ]
+  
 }
+
+
+
