@@ -33,6 +33,12 @@ resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
 
 }
 
+resource "aws_iam_role_policy_attachment" "eks_service_policy" {
+  role       = aws_iam_role.eks_cluster_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
+}
+
+
 
 data "aws_vpc" "default_vpc" {
     default = true
@@ -63,7 +69,8 @@ resource "aws_eks_cluster" "eks_cluster" {
 
 
 depends_on = [
-        aws_iam_role_policy_attachment.eks_cluster_policy
+        aws_iam_role_policy_attachment.eks_cluster_policy.
+         aws_iam_role_policy_attachment.eks_service_policy
 ]
 
 }
@@ -117,6 +124,12 @@ resource "aws_iam_role_policy_attachment" "eks_worker_node_role" {
 }
 
 
+
+
+
+
+
+
 ## Node Group
 
 resource "aws_eks_node_group" "eks_node_group" {
@@ -141,8 +154,22 @@ resource "aws_eks_node_group" "eks_node_group" {
     aws_iam_role_policy_attachment.eks_CNI_policy,
     aws_iam_role_policy_attachment.eks_container_registry_policy,
     aws_iam_role_policy_attachment.eks_worker_node_role,
+    
   ]
   
+}
+
+
+resource "aws_eks_access_entry" "admin" {
+  cluster_name  = aws_eks_cluster.eks.name
+  principal_arn = "arn:aws:iam::277279063828:root"
+  type          = "STANDARD"
+}
+
+resource "aws_eks_access_policy_association" "admin_policy" {
+  cluster_name  = aws_eks_cluster.eks.name
+  principal_arn = aws_eks_access_entry.admin.principal_arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
 }
 
 
