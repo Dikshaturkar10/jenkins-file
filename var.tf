@@ -6,7 +6,7 @@ variable "cluster_name" {
   default = "my-eks-cluster"
 }
 
-variable "node_instance_type" {
+variable "instance_type" {
   default = "t3.micro"
 }
 
