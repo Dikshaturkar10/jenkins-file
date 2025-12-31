@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        AWS_ACCESS_KEY_ID     = credentials('-access-key')
-        AWS_SECRET_ACCESS_KEY = credentials('secret-key')
+        AWS_ACCESS_KEY_ID     = credentials('aws-access-key')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
         AWS_DEFAULT_REGION    = 'eu-north-1'
     }
 
@@ -11,8 +11,7 @@ pipeline {
 
         stage('Pull Code') {
             steps {
-                git branch: 'devops',
-                    url: 'https://github.com/abhilashmwaghmare/cdeb45-jenkins-offline.git'
+               git 'https://github.com/Dikshaturkar10/jenkins-file.git'
             }
         }
 
@@ -44,4 +43,3 @@ pipeline {
 
     }
 }
-
