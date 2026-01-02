@@ -1,0 +1,53 @@
+pipeline {
+     agent any 
+        stages {
+            stage ('stage-1-pull') {         
+                 steps {
+                     git branch: 'devops', url: 'https://gitlab.com/Dikshaturkar10/student-application.git'
+
+            }  
+        }
+                stage ('stage-2-docker-build-frontend') {         
+                  steps {
+                       sh '''cd frontend
+                             docker build -t dikshat1024/easy-frontend:latest .'''
+
+            }  
+        }
+
+              stage ('stage-3-docker-build-backend') {         
+                  steps {
+                    sh '''cd backend
+                             docker build -t dikshat1024/easy-backend:latest .'''
+            }  
+        }
+
+             stage ('stage-4-docker-push-backend-frontend') {         
+                  steps {
+
+                         sh '''docker push dikshat1024/easy-backend:latest
+                               docker push dikshat1024/easy-frontend:latest '''
+            }  
+        }
+        
+        stage('Configure Kubeconfig') {
+           steps {
+              sh '''
+                aws eks update-kubeconfig --region eu-north --name demo-eks-cluster1
+                kubectl get nodes
+                '''
+    }
+}
+
+
+
+      stage ('stage-5-deployment') {         
+                  steps {
+                       sh 'kubectl apply -f simple-deploy/'
+
+            }  
+        }
+
+    }
+
+} 

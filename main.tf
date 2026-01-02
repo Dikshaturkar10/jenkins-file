@@ -1,5 +1,5 @@
 provider "aws" {
-  region = "eu-north-1"
+  region = var.aws_region
 }
 
 # IAM ROLE FOR EKS CLUSTER
@@ -42,7 +42,7 @@ data "aws_subnets" "default_subnets" {
 # EKS CLUSTER
 
 resource "aws_eks_cluster" "eks_cluster" {
-  name     = "my-cluster"
+  name     = var.cluster_name
   role_arn = aws_iam_role.eks_role.arn
   version  = "1.34"
 
@@ -104,7 +104,7 @@ resource "aws_eks_node_group" "eks_node_group" {
   instance_types = ["m7i-flex.large"]
 
   scaling_config {
-    desired_size = 2
+    desired_size = var.desired_nodes
     min_size     = 1
     max_size     = 3
   }
