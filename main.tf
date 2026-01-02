@@ -25,7 +25,7 @@ resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
 }
 
 
-# NETWORK
+# NETWORK 
 
 data "aws_vpc" "default_vpc" {
   default = true
@@ -93,7 +93,7 @@ resource "aws_iam_role_policy_attachment" "node_ecr_policy" {
 }
 
 
-# NODE GROUP
+# NODE GROUP FOR CLUSTER
 
 resource "aws_eks_node_group" "eks_node_group" {
   cluster_name    = aws_eks_cluster.eks_cluster.name
