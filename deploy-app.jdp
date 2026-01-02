@@ -43,7 +43,8 @@ pipeline {
 
       stage ('stage-5-deployment') {         
                   steps {
-                       sh 'kubectl apply -f simple-deploy/'
+                       sh '''kubectl apply -f simple-deploy/
+                       echo "application deployed "  '''
 
             }  
         }
