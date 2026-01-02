@@ -33,7 +33,7 @@ pipeline {
         stage('Configure Kubeconfig') {
            steps {
               sh '''
-                aws eks update-kubeconfig --region eu-north --name demo-eks-cluster1
+                aws eks update-kubeconfig --region eu-north --name my-cluster
                 kubectl get nodes
                 '''
     }
